@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <h2>Register</h2>
+        <form method="POST" action="{{ url_for('register') }}">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                {{ form.username.label }}
+                {{ form.username(class="form-control") }}
+            </div>
+
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password(class="form-control") }}
+            </div>
+
+            <div class="form-group">
+                {{ form.confirm_password.label }}
+                {{ form.confirm_password(class="form-control") }}
+            </div>
+
+         <!-- NEW: Clearance Level Select -->
+            <div class="form-group">
+                {{ form.clearance_level.label }}<br>
+                {{ form.clearance_level(class="form-control", id="clearance-select") }}
+                {% for error in form.clearance_level.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <!-- NEW: Admin Verification Code (hidden by default) -->
+            <div class="form-group" id="admin-code-wrapper" style="display:none;">
+                {{ form.admin_code.label }}<br>
+                {{ form.admin_code(class="form-control", placeholder="Enter Admin Code") }}
+                {% for error in form.admin_code.errors %}
+                    <span class="error">{{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="login-button">Register</button>
+        </form>
+    </div>
+<script>
+    function toggleAdminCode() {
+        const select = document.getElementById('clearance-select');
+        const wrapper = document.getElementById('admin-code-wrapper');
+        if (select && wrapper) {
+            wrapper.style.display = (select.value === 'admin') ? 'block' : 'none';
+            if (select.value !== 'admin') {
+                // Clear the code field when switching back to User
+                const codeInput = wrapper.querySelector('input');
+                if (codeInput) codeInput.value = '';
+            }
+        }
+    }
+    // Initial run in case browser restores previous state
+    document.addEventListener('DOMContentLoaded', toggleAdminCode);
+    // Listen for changes
+    document.getElementById('clearance-select')
+            .addEventListener('change', toggleAdminCode);
+</script>
+</body>
+</html>

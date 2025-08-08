@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Graphs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body class="chat-layout">
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">Inventory Chatbot</div>
+            {% if session.username %}
+                <div class="logged-in">Logged in as: {{ session.username }}</div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <aside class="sidebar">
+        <h2>Navigation</h2>
+        <div class="sidebar-buttons">
+            {% if session.username %}
+                <a class="sidebar-button" href="{{ url_for('index') }}">Chat</a>
+                <a class="sidebar-button" href="{{ url_for('graphs') }}">Graphs</a>
+                <a class="sidebar-button" href="{{ url_for('change_password') }}">Change Password</a>
+                {% if session.get('role') == 'admin' %}
+                    <a class="sidebar-button" href="{{ url_for('show_logs') }}">Query Logs</a>
+                {% endif %}
+                <a class="sidebar-button logout" href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a class="sidebar-button login" href="{{ url_for('login') }}">Login</a>
+                <a class="sidebar-button register" href="{{ url_for('register') }}">Register</a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <main>
+        <div class="container">
+            <h1>📊 Inventory Analytics Dashboard</h1>
+            <p>Create custom visualizations to analyze your inventory data and gain business insights</p>
+
+            {% if dashboard_stats %}
+            <div class="dashboard-overview">
+                <h2>📈 Inventory Overview</h2>
+                <div class="overview-stats">
+                    <div class="overview-card">
+                        <div class="overview-number">{{ dashboard_stats.total_items }}</div>
+                        <div class="overview-label">Total Products</div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-number">{{ dashboard_stats.total_sales }}</div>
+                        <div class="overview-label">Total Units Sold</div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-number">${{ "%.2f"|format(dashboard_stats.avg_profit) }}</div>
+                        <div class="overview-label">Average Profit</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-container">
+                <form method="POST" action="{{ url_for('graphs') }}" id="chartForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="chart_type">📈 Chart Type:</label>
+                            <select name="chart_type" id="chart_type" class="form-control" required>
+                                <option value="">Select Chart Type</option>
+                                <option value="bar" {% if request.form.get('chart_type') == 'bar' %}selected{% endif %}>📊 Bar Chart</option>
+                                <option value="line" {% if request.form.get('chart_type') == 'line' %}selected{% endif %}>📈 Line Chart</option>
+                                <option value="pie" {% if request.form.get('chart_type') == 'pie' %}selected{% endif %}>🥧 Pie Chart</option>
+                                <option value="doughnut" {% if request.form.get('chart_type') == 'doughnut' %}selected{% endif %}>🍩 Doughnut Chart</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="data_type">📋 Data to Visualize:</label>
+                            <select name="data_type" id="data_type" class="form-control" required>
+                                <option value="">Select Data Type</option>
+                                <option value="sales" {% if request.form.get('data_type') == 'sales' %}selected{% endif %}>🛒 Sales by Product</option>
+                                <option value="profit" {% if request.form.get('data_type') == 'profit' %}selected{% endif %}>💰 Profit by Product</option>
+                                <option value="price" {% if request.form.get('data_type') == 'price' %}selected{% endif %}>💲 Price by Product</option>
+                                <option value="cost" {% if request.form.get('data_type') == 'cost' %}selected{% endif %}>🏭 Cost by Product</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="filter_option">🔍 Filter Options:</label>
+                            <select name="filter_option" id="filter_option" class="form-control">
+                                <option value="">All Items</option>
+                                <option value="top5" {% if request.form.get('filter_option') == 'top5' %}selected{% endif %}>Top 5 Items</option>
+                                <option value="low_stock" {% if request.form.get('filter_option') == 'low_stock' %}selected{% endif %}>Low Stock Items</option>
+                                <option value="most_profitable" {% if request.form.get('filter_option') == 'most_profitable' %}selected{% endif %}>Most Profitable Items</option>
+                                <option value="affordable" {% if request.form.get('filter_option') == 'affordable' %}selected{% endif %}>Affordable Items</option>
+                                <option value="low_cost" {% if request.form.get('filter_option') == 'low_cost' %}selected{% endif %}>Low Cost Items</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="limit">📏 Limit Results:</label>
+                            <select name="limit" id="limit" class="form-control">
+                                <option value="">Show All</option>
+                                <option value="3" {% if request.form.get('limit') == '3' %}selected{% endif %}>Top 3</option>
+                                <option value="5" {% if request.form.get('limit') == '5' %}selected{% endif %}>Top 5</option>
+                                <option value="10" {% if request.form.get('limit') == '10' %}selected{% endif %}>Top 10</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="generate-chart-btn">
+                        🎯 Generate Advanced Chart
+                    </button>
+                </form>
+            </div>
+
+            {% if chart_html %}
+            <div class="chart-container">
+                <h2>{{ chart_config.title }}</h2>
+                <div class="chart-wrapper">
+                    {{ chart_html | safe }}
+                </div>
+                <div class="chart-stats">
+                    <div class="stat-box">
+                        <span class="stat-number">{{ chart_config['values']|length }}</span>
+                        <span class="stat-label">Total Items</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">
+                            {% if chart_config['unit'] == '$' %}
+                                ${{ "%.2f"|format(chart_config['values']|max) }}
+                            {% else %}
+                                {{ chart_config['values']|max }}
+                            {% endif %}
+                        </span>
+                        <span class="stat-label">Highest Value</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">
+                            {% set count = chart_config['values']|length %}
+                            {% if count > 0 %}
+                                {% if chart_config['unit'] == '$' %}
+                                    ${{ "%.2f"|format(chart_config['values']|sum / count) }}
+                                {% else %}
+                                    {{ "%.1f"|format(chart_config['values']|sum / count) }}
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </span>
+                        <span class="stat-label">Average</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">
+                            {% if chart_config['unit'] == '$' %}
+                                ${{ "%.2f"|format(chart_config['values']|sum) }}
+                            {% else %}
+                                {{ chart_config['values']|sum }}
+                            {% endif %}
+                        </span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Inventory Management System</p>
+    </footer>
+</body>
+</html>

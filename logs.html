@@ -1,0 +1,42 @@
+<!-- templates/logs.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot Query Logs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Chatbot Query History</h1>
+        
+        <div class="logs-container">
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User Query</th>
+                        <th>Bot Response</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log[0] }}</td>
+                        <td>{{ log[1] }}</td>
+                        <td>{{ log[2] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3">No logs found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Add this at the top of your logs.html body -->
+<div class="navigation">
+    <a href="{{ url_for('index') }}" class="nav-button">Back to Chat</a>
+</div>
+</body>
+</html>

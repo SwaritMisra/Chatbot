@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="static\favicon.ico">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>Simple Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; }
+        #chat-container {
+            width: 600px;
+            margin: 50px auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 800px;
+            background-color: #fff;
+        }
+        #chat-box {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ccc;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 70%;
+            line-height: 1.4;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #e9e9eb;
+            color: black;
+            align-self: flex-start;
+        }
+        #input-area {
+            display: flex;
+            padding: 10px;
+        }
+        #user-input {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 15px;
+            padding: 10px;
+        }
+        #send-button {
+            border: none;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            margin-left: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .message {
+            white-space: pre-line;
+        }
+        .graph-container {
+            width: 100%;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body class="chat-layout">
+<nav class="navbar">
+    <div class="navbar-content">
+        <div class="logo">Luma</div>
+        {% if session['username'] %}
+            <div class="logged-in">Logged in as <strong>{{ session['username'] }}</strong></div>
+        {% endif %}
+    </div>
+</nav>
+ <aside class="sidebar">
+    <h2>Menu</h2>
+    <div class="sidebar-buttons">
+        {% if session['username'] %}
+            <a href="{{ url_for('change_password') }}" class="sidebar-button">Change Password</a>
+            <a class="sidebar-button" href="{{ url_for('graphs') }}">Graphs</a>
+            <a href="{{ url_for('logout') }}" class="sidebar-button logout">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="sidebar-button login">Login</a>
+            <a href="{{ url_for('register') }}" class="sidebar-button register">Register</a>
+        {% endif %}
+    </div>
+    <div class="navigation">
+            {% if session.get('role') == 'admin' %}
+                <a class="sidebar-button" href="{{ url_for('show_logs') }}">Query Logs</a>
+            {% endif %}
+    </div>
+</aside>
+<main>
+<div id="chat-container">
+    <div id="chat-box">
+        <div class="message bot-message">Hi! How can I help you today?</div>
+    </div>
+    <div id="input-area">
+        <input type="text" id="user-input" placeholder="Type a message...">
+        <button id="send-button">→</button>
+    </div>
+</div>
+
+<script>
+  const chatBox = document.getElementById('chat-box');
+  const userInput = document.getElementById('user-input');
+  const sendButton = document.getElementById('send-button');
+
+  function displayMessage(text, fromBot = true) {
+    const msg = document.createElement('div');
+    msg.className = fromBot ? 'bot-message message' : 'user-message message';
+    msg.innerHTML = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function displayGraph(html) {
+    console.log('Displaying graph with HTML length:', html.length);
+    
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    
+    // Add to chat box first
+    chatBox.appendChild(container);
+    
+    // Execute any script tags in the HTML
+    const scripts = container.querySelectorAll('script');
+    scripts.forEach(script => {
+        try {
+            console.log('Executing script:', script.innerHTML.substring(0, 100) + '...');
+            // Create a new script element and execute it
+            const newScript = document.createElement('script');
+            newScript.text = script.innerHTML;
+            document.head.appendChild(newScript);
+            // Remove it after execution
+            document.head.removeChild(newScript);
+        } catch (e) {
+            console.error('Error executing script:', e);
+        }
+    });
+    
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text) return;
+    displayMessage(text, false);
+    userInput.value = '';
+
+    fetch('/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    })
+    .then(r => r.json())
+    .then(data => {
+      displayMessage(data.response);
+      if (data.graph) {
+        console.log('Received graph data');
+        displayGraph(data.graph);
+      }
+    })
+    .catch(err => {
+      console.error('Chat error:', err);
+      displayMessage('Sorry, something went wrong.');
+    });
+  }
+
+  sendButton.addEventListener('click', sendMessage);
+
+  userInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Check if Plotly is loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Plotly !== 'undefined') {
+        console.log('Plotly loaded successfully, version:', Plotly.version);
+    } else {
+        console.error('Plotly failed to load');
+    }
+  });
+</script>
+</main>
+</body>
+</html>
